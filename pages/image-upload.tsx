@@ -1,11 +1,15 @@
 import * as React from 'react';
-import Image from 'next/image';
+import CardImages from '../components/cards/CardImages';
+import { convertTensorToImage, convertToTensor } from '../utils';
 
 const ImageUpload = () => {
     const [image, setImage] = React.useState('');
     const [imageData, setImageData] = React.useState<File | undefined>();
     const [val, setVal] = React.useState('');
     const [temp, setTemp] = React.useState('');
+    const [tensorImage, setTensorImage] = React.useState<unknown>();
+    const [tensorShape, setTensorShape] = React.useState<unknown>();
+    const myCanvas = React.useRef(null);
 
     React.useEffect(() => {
         fetch('/api/upload', {
@@ -30,6 +34,7 @@ const ImageUpload = () => {
         setImage(img);
         setVal('');
         setTemp('');
+        setTensorImage('');
     };
 
     const upload = async (e: React.FormEvent) => {
@@ -45,6 +50,14 @@ const ImageUpload = () => {
             setImage('');
             if (resp.success) {
                 setTemp(resp.file);
+                if (resp.file) {
+                    const tensorImg = await convertToTensor(resp.file);
+                    setTensorImage(tensorImg);
+                    // @ts-expect-error
+                    const tensorS = await tensorImg.array();
+                    setTensorShape(tensorS);
+                    convertTensorToImage(tensorImg, myCanvas.current);
+                }
             }
         }
     };
@@ -85,18 +98,16 @@ const ImageUpload = () => {
                 </button>
                 {image ? <img src={image} /> : <></>}
             </div>
-            <div className="flex items-center justify-center mt-5 ">
-                <div className="w-96 h-96 relative">
-                    {temp ? (
-                        <Image
-                            src={temp + '?' + new Date().getTime()}
-                            layout="fill"
-                            objectFit="contain"
-                        />
-                    ) : (
-                        <></>
-                    )}
-                </div>
+            <div className="grid grid-cols-2 gap-4 mt-5">
+                {temp ? (
+                    <CardImages
+                        image={temp}
+                        canvas={myCanvas}
+                        tensor={tensorShape}
+                    />
+                ) : (
+                    <></>
+                )}
             </div>
         </>
     );
